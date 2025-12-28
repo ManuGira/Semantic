@@ -15,6 +15,18 @@ uv run myscript.py
 python myscript.py
 ```
 
+## Testing
+tests are also run using `uv`.
+To run all tests at once, use:
+```bash
+uv run pytest tests
+```
+
+run individual test files like so:
+```bash
+uv run pytest tests/test_example.py
+```
+
 ## Examples
 
 - `uv run src/main_semantic_game.py`
