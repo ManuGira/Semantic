@@ -4,7 +4,7 @@ from os.path import join as pjoin
 from gensim.models import KeyedVectors
 
 
-def load_most_frequent_words(N: int = None):
+def load_most_frequent_words(N: int = None, model=None):
     here = os.path.abspath(os.path.dirname(__file__))
     data_folder = pjoin(here, "..", "data")
     freq_file = pjoin(data_folder, "frequency.txt")
@@ -15,9 +15,16 @@ def load_most_frequent_words(N: int = None):
     words = [word.replace("œ", "oe") for word in words]  # replace œ with oe
     words = [word for word in words if "'" not in word]  # remove words with apostrophes
 
+    if model is not None:
+        words = [word for word in words if word in model.key_to_index]
+
     if N is None:
         return words
-    return words[:N]
+
+    indexes = np.linspace(0, len(words)-1, num=N, dtype=int)
+
+    selected_words = [words[i] for i in indexes]
+    return selected_words
 
 
 def load_model(model_file="frWac_non_lem_no_postag_no_phrase_200_cbow_cut100.bin"):
@@ -69,7 +76,7 @@ def compute_similarity_matrix(model, words):
 
 
 def compute_heatmap_matrix(model, words):
-    distance_matrix = compute_similarity_matrix(model, words)
-    # Convert distances to similarities
-    return distance_matrix * 100
+    # Convert similarities to heat
+    return compute_similarity_matrix(model, words) * 100
+
 

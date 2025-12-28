@@ -3,58 +3,63 @@ import numpy as np
 from common import load_model, load_most_frequent_words
 
 
-def run_game(model, available_words):
-    secret_word = np.random.choice(available_words)
-    print("A secret word has been chosen. Try to guess it!")
-    attempts = 0
-    observed: dict[str, tuple[int, float]] = {}
-    while True:
-        print()
-        guess = input("Enter your guess: ").strip()
-        if guess.lower() == '_':
-            print(f"The secret word was: {secret_word}")
-            break
-        if guess not in available_words:
-            print(f"Word '{guess}' not in the list. Please try again.")
-            continue
+class SemanticGame:
+    def __init__(self, model, available_words):
+        self.model = model
+        self.available_words = available_words
+        self.secret_word = np.random.choice(available_words)
+        self.attempts = 0
+        self.observed: dict[str, tuple[int, float]] = {}
+        self.game_on = True
 
-        attempts += 1
-        if guess == secret_word:
-            print(f"Congratulations! You've guessed the secret word '{secret_word}' in {attempts} attempts.")
-            break
+    def play_turn(self, guess) -> tuple[float, str]:
+        if guess not in self.available_words:
+            msg = f"Word '{guess}' not in the list. Please try again."
+            return None, msg
 
         # Provide feedback based on similarity
-        similarity = model.similarity(guess, secret_word)
+        similarity = self.model.similarity(guess, self.secret_word)
         score = 100 * similarity
-        if guess not in observed:
-            observed[guess] = attempts, score
+        if guess not in self.observed:
+            self.observed[guess] = self.attempts, score
 
-        attempt = observed[guess][0]
+        attempt = self.observed[guess][0]
 
-        current_score = f"{attempt} {guess}: {score:.2f}"
+        score_msg = f"{attempt} {guess}: {score:.2f}"
+        msg = ""
 
+        self.attempts += 1
+        if guess == self.secret_word:
+            self.game_on = False
+            msg += f"\nCongratulations! You've guessed the secret word '{self.secret_word}' in {self.attempts} attempts."
+            return score, msg
 
-        # print  a sorted list of all observed words by similarity
-        sorted_observed = sorted(observed.items(), key=lambda item: item[1][1], reverse=False)
-        for word, att_score in sorted_observed:
-            attempt, score = att_score
-            print(f"{attempt} {word}: {score:.2f}")
+        # print a sorted list of all observed words by similarity
+        sorted_observed = sorted(self.observed.items(), key=lambda item: item[1][1], reverse=False)
+        for word_, att_score_ in sorted_observed:
+            attempt_, score_ = att_score_
+            msg += f"\n{attempt_} {word_}: {score_:.2f}"
 
-        print("----")
-        print(current_score)
+        msg += f"\n----"
+        msg += f"current_score"
+        msg += f"\n{score_msg}"
+        return score, msg
 
+    def run_interactive(self):
+        print("A secret word has been chosen. Try to guess it!")
+        while self.game_on:
+            score, msg = self.play_turn(input("Enter your guess: ").strip())
+            print(msg)
 
 def main():
     print("Loading model...")
-    tick = time.time()
     model = load_model()
-    tock = time.time()
-    print(f"Model loaded in {tock - tick:.02f} seconds.")
 
     # words = ["roi", "reine", "banane", "pomme", "voiture", "camion", "avion", "bateau", "félin", "chat", "chien"]
-    words = load_most_frequent_words()
+    words = load_most_frequent_words(3100, model)
 
-    run_game(model, words)
+    game = SemanticGame(model, words)
+    game.run_interactive()
 
 
 if __name__ == "__main__":
