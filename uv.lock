@@ -79,10 +79,14 @@ wheels = [
 
 [[package]]
 name = "coordinatus"
-version = "0.3.0.dev1"
-source = { git = "https://github.com/ManuGira/Coordinatus.git?rev=develop#cdc676564973e478b2df1de70b568e2183a03466" }
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/65/24/33b388a1a1e54edc8f54eeb46e0239600e25669b2c1f7ee710f78f4cc0ed/coordinatus-0.3.0.tar.gz", hash = "sha256:e5f1e42c9c2750bdaaecd574ce9f3def856aa6586d383e92fd8ec454fd21d78a", size = 12309, upload-time = "2026-01-02T17:06:27.511Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/3f/908aaeff8d78af438775f92d140ae6ea64d3810e998a6ad5d2b5edf88e82/coordinatus-0.3.0-py3-none-any.whl", hash = "sha256:6033f79d8d2bff49961e2e65f5b45fe9b70e2989bc7a4d41024a884fd849a34e", size = 16350, upload-time = "2026-01-02T17:06:26.138Z" },
 ]
 
 [[package]]
@@ -691,7 +695,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "coordinatus", git = "https://github.com/ManuGira/Coordinatus.git?rev=develop" },
+    { name = "coordinatus", specifier = ">=0.3.0" },
     { name = "gensim", specifier = ">=4.4.0" },
     { name = "matplotlib", specifier = ">=3.10.8" },
     { name = "numpy", specifier = ">=2.4.0" },

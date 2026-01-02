@@ -127,6 +127,7 @@ class CrossWord:
 class CrossWordsBoard:
     def __init__(self):
         self.placements: list[CrossWord] = []
+        self.revealed_placements: list[bool] = []
 
     def is_valid_placement(self, new_word: CrossWord) -> bool:
         """Check if a crossword placement is valid on the board."""
@@ -153,6 +154,13 @@ class CrossWordsBoard:
 
     def add_word(self, word: CrossWord):
         self.placements.append(word)
+        self.revealed_placements.append(False)
+
+    def reveal_word(self, word: str):
+        for idx, placement in enumerate(self.placements):
+            if placement.word == word:
+                self.revealed_placements[idx] = True
+        return
 
     def compute_new_word_placements(self, word: str):
         if len(self.placements) == 0:
@@ -175,12 +183,10 @@ class CrossWordsBoard:
                 return char
         return ""
 
-
-    def generate_board(self) -> list[list[str]]:
-        """Display the current state of the board."""
+    def compute_board_bounds(self) -> tuple[int, int, int, int]:
+        """Compute the bounding box of the current board."""
         if not self.placements:
-            print("Board is empty.")
-            return [["."]]
+            return 0, 0, 0, 0
 
         letters = [letter for placement in self.placements for letter in placement.letters()]
 
@@ -189,17 +195,56 @@ class CrossWordsBoard:
         min_y = int(round(min(letter.pos_xy[1] for letter in letters)))
         max_y = int(round(max(letter.pos_xy[1] for letter in letters)))
 
+        return min_x, max_x, min_y, max_y
+
+    def generate_board(self) -> np.ndarray:
+        """Display the current state of the board."""
+        if not self.placements:
+            print("Board is empty.")
+            return np.array([[]])
+
+        min_x, max_x, min_y, max_y = self.compute_board_bounds()
+
         board_frame = co.create_frame(None, tx=min_x, ty=min_y)
         width = max_x - min_x + 1
         height = max_y - min_y + 1
         board_array = np.full((height, width), ".", dtype=str)
 
+        letters = [letter for placement in self.placements for letter in placement.letters()]
         for letter in letters:
             pos_xy = letter.pos_xy.relative_to(board_frame)
             x, y = pos_xy.coords.round().astype(int)
             board_array[y, x] = letter.char
 
-        return board_array.tolist()
+        return board_array
+
+    def generate_board_mask(self) -> np.ndarray:
+        if not self.placements:
+            print("Board is empty.")
+            return np.array([[]])
+
+        min_x, max_x, min_y, max_y = self.compute_board_bounds()
+        board_frame = co.create_frame(None, tx=min_x, ty=min_y)
+        width = max_x - min_x + 1
+        height = max_y - min_y + 1
+        board_mask = np.full((height, width), False, dtype=bool)
+        for revealed, word in zip(self.revealed_placements, self.placements):
+            if not revealed:
+                continue
+            for letter in word.letters():
+                pos_xy = letter.pos_xy.relative_to(board_frame)
+                x, y = pos_xy.coords.round().astype(int)
+                board_mask[y, x] = True
+
+        return board_mask
+
+    def generate_revealed_board(self) -> np.ndarray:
+        board_str = self.generate_board()
+        board_mask = self.generate_board_mask()
+
+        letters_to_mask = np.logical_and(board_str != ".", ~board_mask)
+        board_str[letters_to_mask] = "+"
+        return board_str
 
 
 def load_words():
@@ -223,10 +268,36 @@ def load_words():
     sorted_words = sorted(frequent_words, key=lambda w: model.similarity(root_word, w), reverse=True)
     return sorted_words
 
+def start_game(board: CrossWordsBoard):
+    # reveal the first word
+    board.reveal_word(board.placements[0].word)
+    # previous_board_str = None
+    while True:
+        board_str = board.generate_revealed_board()
+        # if previous_board_str is None:
+        #     previous_board_str = board_str
+
+        print("Current board:")
+        color_end = "\033[0m"
+        for row_str in board_str:
+            row = []
+            for char in row_str:
+                # blue bold default color
+                color = "\033[94;1m"
+                if char in "+.":
+                    # light gray for hidden letterss
+                    color = "\033[90m"
+
+                row.append(f"{color}{char}{color_end}")
+            print(" ".join(row))
+
+        user_word = input("Enter a word to reveal> ").strip()
+        board.reveal_word(user_word)
+
 def main():
     board = CrossWordsBoard()
-    # words = load_words()
-    words = ["école", "primaire", "scolaire", "élémentaire", "collège", "classe", "élève", "éducation", "instituteur", "lycée", "secondaire", "enseigner", "enseignant", "rentrée", "enseignement", "professeur", "cycle", "apprendre", "civique", "fréquenter", "sixième", "enlever", "apprentissage", "établissement", "réussite", "enfant", "enfance", "inspecteur", "discipline", "orientation", "citoyenneté", "institution", "instruire", "degré", "adulte", "difficulté", "supérieur", "adolescent", "cours", "année", "dès", "rénovation", "prioritaire", "gamin", "technologie", "initier", "inspection", "précoce", "échec", "collègue", "famille", "amener", "universitaire", "grand-père", "grand-mère", "fiche", "lecture", "culture", "jeune", "municipalité", "métier", "cirque", "camarade", "progressivement", "âge", "intégration", "autrefois", "réussir", "copain", "préparer", "intégrer", "atelier", "instruction", "grandir", "maison", "pratique", "former", "mère", "dans", "cité", "travailler", "sou", "tante", "garçon", "entrée", "parent", "aider", "excellence", "maître", "présentement", "artistique", "autonomie", "jeunesse", "ingénieur", "approprier", "tôt", "maternel", "encadrement", "leçon", "écriture"]
+    words = load_words()
+    # words = ["école", "primaire", "scolaire", "élémentaire", "collège", "classe", "élève", "éducation", "instituteur", "lycée", "secondaire", "enseigner", "enseignant", "rentrée", "enseignement", "professeur", "cycle", "apprendre", "civique", "fréquenter", "sixième", "enlever", "apprentissage", "établissement", "réussite", "enfant", "enfance", "inspecteur", "discipline", "orientation", "citoyenneté", "institution", "instruire", "degré", "adulte", "difficulté", "supérieur", "adolescent", "cours", "année", "dès", "rénovation", "prioritaire", "gamin", "technologie", "initier", "inspection", "précoce", "échec", "collègue", "famille", "amener", "universitaire", "grand-père", "grand-mère", "fiche", "lecture", "culture", "jeune", "municipalité", "métier", "cirque", "camarade", "progressivement", "âge", "intégration", "autrefois", "réussir", "copain", "préparer", "intégrer", "atelier", "instruction", "grandir", "maison", "pratique", "former", "mère", "dans", "cité", "travailler", "sou", "tante", "garçon", "entrée", "parent", "aider", "excellence", "maître", "présentement", "artistique", "autonomie", "jeunesse", "ingénieur", "approprier", "tôt", "maternel", "encadrement", "leçon", "écriture"]
 
     for word in words:
         # Compute candidate placements for the new word
@@ -258,19 +329,15 @@ def main():
             break
 
     print("Final board:")
-    for row in board.generate_board():
-        print(" ".join(row))
+    board_str = board.generate_board()
+    print("Current board:")
+    for row_str in board_str:
+        print(" ".join(row_str))
 
-def main2():
-    board = CrossWordsBoard()
-    word1 = CrossWord("chat", co.Point([0, 0]), Orientation.HORIZONTAL)
-    board.add_word(word1)
+    print("\n"*30)
+    start_game(board)
 
-    word2 = CrossWord("table", co.Point([-1, -1]), Orientation.VERTICAL)
-    if board.is_valid_placement(word2):
-        board.add_word(word2)
 
-    board.generate_board()
 
 if __name__ == "__main__":
     main()
