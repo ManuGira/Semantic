@@ -3,6 +3,7 @@ import urllib.request
 from pathlib import Path
 from ortools.linear_solver import pywraplp
 import numpy as np
+import argparse
 import common as cmn
 
 
@@ -117,7 +118,7 @@ def find_best_word_combination(df_words: pd.DataFrame, N:int, letters: list[str]
         print("No optimal solution found.")
 
 
-def find_best_opening(language: str, length: int, N: int, blacklist: list[str]):
+def find_best_opening(language: str, length: int, N: int):
     """
     Find the best opening words for Wordle-like games.
     :param language: "french" or "english"
@@ -131,7 +132,6 @@ def find_best_opening(language: str, length: int, N: int, blacklist: list[str]):
     words = cmn.load_all_words(language)
     words = clean_accents(words)
     words = filter_words(words, length)
-    words = [w for w in words if w not in blacklist]
     print(f"Number of valid words: {len(words)}")
 
     # compute frequency map
@@ -153,7 +153,30 @@ def find_best_opening(language: str, length: int, N: int, blacklist: list[str]):
 
 
 if __name__ == "__main__":
-    find_best_opening("french", length=5, N=2, blacklist="anlet,irous,luteo,altin,astel,doylt,cothy,undim,harst,notus,autre,insol,aleut,abdom".split(","))
+    parser = argparse.ArgumentParser(
+        description="Find the best opening words for Wordle-like games using letter frequency analysis."
+    )
+    parser.add_argument(
+        "language",
+        type=str,
+        choices=["french", "english"],
+        help="Language to use: french or english"
+    )
+    parser.add_argument(
+        "length",
+        type=int,
+        help="Length of each word"
+    )
+    parser.add_argument(
+        "N",
+        type=int,
+        help="Number of opening words to select"
+    )
+
+    args = parser.parse_args()
+
+    find_best_opening(args.language, args.length, args.N)
+
     # french, length=6, N=2: amours, client
     # french, length=6, N=3: dragon, mythes, public
     # french, length=6, N=2: etron, laius
