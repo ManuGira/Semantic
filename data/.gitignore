@@ -1,0 +1,5 @@
+# ignore all files in data but csv files
+*
+!*.csv
+!*.json
+!.gitignore
