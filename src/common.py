@@ -17,7 +17,9 @@ def unit_vector(vec: np.ndarray) -> np.ndarray:
     Returns:
         Unit vector
     """
-    return vec / np.linalg.norm(vec, axis=1)
+    norms = np.linalg.norm(vec, axis=1, keepdims=True)
+    norms[norms == 0] = 1.0  # prevent division by
+    return vec / norms
 
 def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
     """
@@ -92,10 +94,12 @@ def compute_correlation_matrix(model, words):
     N = len(vectors)
     correlation_matrix = np.zeros((N, N))
     for i in range(N):
-        for j in range(N):
+        for j in range(i, N):
             correlation_matrix[i, j] = np.dot(vectors[i], vectors[j]) / (
                 np.linalg.norm(vectors[i]) * np.linalg.norm(vectors[j])
             )
+
+    correlation_matrix = correlation_matrix + correlation_matrix.T - np.diag(correlation_matrix.diagonal())
     return correlation_matrix
 
 
@@ -105,19 +109,40 @@ def compute_distance_matrix(model, words):
     N = len(vectors)
     distance_matrix = np.zeros((N, N))
     for i in range(N):
-        for j in range(N):
+        for j in range(i, N):
             distance_matrix[i, j] = np.linalg.norm(vectors[i] - vectors[j])
+
+    distance_matrix = distance_matrix + distance_matrix.T - np.diag(distance_matrix.diagonal())
     return distance_matrix
 
+def compute_similarity_matrix_fast(model, words):
+    print("Computing similarity matrix (fast)...")
+    import time
+    indexes = [model.key_to_index[word] for word in words if word in model.key_to_index]
+    vectors = np.array([model.vectors[index] for index in indexes])
+    vectors = unit_vector(vectors)
+    tick = time.time()
+    similarity_matrix = np.dot(vectors, vectors.T)
+    tock = time.time()
+    print(f"Similarity matrix computed in {tock - tick:.2f} seconds.")
+    return similarity_matrix
 
 def compute_similarity_matrix(model, words):
+    print("Computing similarity matrix...")
+    import time
     indexes = [model.key_to_index[word] for word in words if word in model.key_to_index]
     vectors = [model.vectors[index] for index in indexes]
     N = len(vectors)
     similarity_matrix = np.zeros((N, N))
+    tick = time.time()
     for i in range(N):
-        for j in range(N):
+        for j in range(i, N):
             similarity_matrix[i, j] = model.similarity(words[i], words[j])
+
+    similarity_matrix = similarity_matrix + similarity_matrix.T - np.diag(similarity_matrix.diagonal())
+
+    tock = time.time()
+    print(f"Similarity matrix computed in {tock - tick:.2f} seconds.")
     return similarity_matrix
 
 
